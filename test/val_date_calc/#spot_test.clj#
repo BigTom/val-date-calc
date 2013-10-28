@@ -1,0 +1,81 @@
+(ns val-date-calc.spot-test
+  (:require [clojure.test :refer :all]
+            [clj-time.core :as dt]
+            [val-date-calc.core :refer :all]
+            [val-date-calc.spot :refer :all]
+            [val-date-calc.main :refer :all]
+            [val-date-calc.core-test :refer :all]))
+
+(deftest basic-spot
+  (testing "Same spot days"    
+    (are [x y] (= x y)
+         (val-date "SP" (dt/date-time 2000 4 18 12) "CAD" "USD" ccys)
+         (dt/local-date 2000 4 19)
+
+         (val-date "SP" (dt/date-time 2000 4 18 12) "GBP" "JPY" ccys)
+         (dt/local-date 2000 4 20))
+    
+    (testing "Different days to spot"
+      (are [x y] (= x y)
+           (val-date "SP" (dt/date-time 2000 4 18 12) "GBP" "USD" ccys)
+           (dt/local-date 2000 4 20)))
+
+    (testing "Roll over weekend"
+      (are [x y] (= x y)
+           (val-date "SP" (dt/date-time 2000 4 14 12) "GBP" "USD" ccys)
+           (dt/local-date 2000 4 18)
+
+           (val-date "SP" (dt/date-time 2000 4 14 12) "USD" "CAD" ccys)
+           (dt/local-date 2000 4 17)
+
+           (val-date "SP" (dt/date-time 2000 4 14 12) "GBP" "JPY" ccys)
+           (dt/local-date 2000 4 18)))))
+
+(deftest spot-with-holidays
+  (testing "Cannot settle on holiday for either of pair"    
+    (are [x y] (= x y)
+         (val-date "SP" (dt/date-time 2000 5 1 12) "USD" "JPY" ccys)
+         (dt/local-date 2000 5 4)
+
+         (val-date "SP" (dt/date-time 2000 5 1 12) "GBP" "USD" ccys)
+         (dt/local-date 2000  5 4)))
+  (testing "Can settle on holiday for other ccy (JPY)"    
+    (are [x y] (= x y)
+         (val-date "SP" (dt/date-time 2000 5 22 12) "GBP" "USD" ccys)
+         (dt/local-date 2000 5 24)))
+  (testing "USD (1 day spot, holiday) matches JPY (2 day apot, no holiday)"    
+    (are [x y] (= x y)
+         (val-date "SP" (dt/date-time 2000 5 2 12) "USD" "JPY" ccys)
+         (dt/local-date 2000 5 4)))
+  (testing "Spot not affected by holiday today"    
+    (are [x y] (= x y)
+         (val-date "SP" (dt/date-time 2000 5 3 12) "GBP" "USD" ccys)
+         (dt/local-date 2000 5 5)))
+  (testing "Different ccy spots settle on latest one"    
+    (are [x y] (= x y)
+         (val-date "SP" (dt/date-time 2000 5 16 12) "USD" "JPY" ccys)
+         (dt/local-date 2000 5 19))))
+
+(deftest nzd-rolls
+  (testing "Before 15:00 settles as normal"    
+    (are [x y] (= x y)
+         (val-date "SP" (dt/date-time 2000 4 18 13) "NZD" "USD" ccys)
+         (dt/local-date 2000 4 20)))
+  (testing "After 15:00 NZD rolls the trade date"    
+    (are [x y] (= x y)
+         (val-date "SP" (dt/date-time 2000 4 18 15  1) "NZD "USD" ccys)
+         (dt/local-date 2000 4 21)))))
+  (testing "NZD doesn't roll until 17:00 before the weekend"    
+    (are [x y] (= x y)
+         (val-date "SP" (dt/date-time 2000 4 14 16 59) "NZD "USD" ccys)
+         (dt/local-date 2000 4 18)))))))
+  (testing "Spot not affected by holiday today"    
+    (are [x y] (= x y)
+(val-date "SP" (dt/date-time 2000 5 3 12) "GBP" "USD" (assoc ccys (assoc (ccys "NZD") (assoc (:holidays ccys) (dt/local-date 2000 4 19)))))
+         (dt/local-date 2000 5 5)))
+  (testing "Different ccy spots settle on latest one"    
+    (are [x y] (= x y)
+         (val-date "SP" (dt/date-time 2000 5 16 12) "USD" "JPY" ccys)
+         (dt/local-date 2000 5 19))))
+
+
